@@ -50,12 +50,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y 
-            # libwebkit2gtk-4.0-dev \
-            # build-essential \
-            libssl-dev \
-            # libgtk-3-dev \
-            # libayatana-appindicator3-dev \
-            # librsvg2-dev
+              sudo apt-get install -y --no-install-recommends \
+              libwebkit2gtk-4.0-dev \
+              libgtk-3-dev \
+              librsvg2-dev \
+              libssl3 \
+              openssl
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -66,8 +66,9 @@ jobs:
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         run: |
-          choco install -y vcredist2015 vcredist140 imagemagick
+          choco install -y imagemagick
 
+      # vcredist2015 vcredist140
       # 准备图标
       - name: Prepare icons
         run: |
