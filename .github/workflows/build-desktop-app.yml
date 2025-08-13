@@ -12,6 +12,7 @@ env:
   # 应用基本信息
   APP_NAME: "DeepGaze" # 桌面应用名称
   WEB_URL: "http://107.172.62.114:8080/" # 要打包的网页URL
+  PROXY_URL: "http://107.172.62.114:38080" # 代理地址（可选），如 "http://proxy.example.com:8080"
 
   # 窗口设置
   WINDOW_WIDTH: 1200 # 窗口宽度
@@ -106,6 +107,13 @@ jobs:
             BUILD_ARGS=""
           fi
 
+          # 设置代理参数（如果配置了代理URL）
+          PROXY_ARG=""
+          if [ -n "${{ env.PROXY_URL }}" ]; then
+            PROXY_ARG="--proxy-url ${{ env.PROXY_URL }}"
+            echo "Using proxy: ${{ env.PROXY_URL }}"
+          fi
+
           # 执行构建
           pake "${{ env.WEB_URL }}" \
             --name "${{ env.APP_NAME }}" \
@@ -113,6 +121,7 @@ jobs:
             --height ${{ env.WINDOW_HEIGHT }} \
             --width ${{ env.WINDOW_WIDTH }} \
             $BUILD_ARGS \
+            $PROXY_ARG \  # 代理参数
             --output ./dist
 
           # 重命名输出文件
@@ -137,7 +146,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 上传为工作流产物（可选）
+      # 上传为工作流产物
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
