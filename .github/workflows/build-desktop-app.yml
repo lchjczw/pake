@@ -54,7 +54,7 @@ jobs:
               # libwebkit2gtk-4.0-dev \
               # libgtk-3-dev \
               # librsvg2-dev \
-              libssl3 \
+              # libssl3 \
               openssl
 
       - name: Install macOS dependencies
