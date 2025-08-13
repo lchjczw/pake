@@ -61,7 +61,8 @@ jobs:
         run: |
           brew update
           # 仅安装必需依赖
-          brew install -y openssl libpng jpeg-turbo
+          brew install -y openssl
+          # libpng jpeg-turbo
 
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
