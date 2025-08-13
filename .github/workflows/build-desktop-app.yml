@@ -74,11 +74,14 @@ jobs:
           mkdir -p build
 
           # 使用自定义图标或创建默认图标
-          if [ -f "${{ env.ICON_PATH }}" ]; then
-            cp "${{ env.ICON_PATH }}" build/icon.png
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            if (Test-Path "${{ env.ICON_PATH }}") {
+              cp "${{ env.ICON_PATH }}" public/icon.png
+            }
           else
-            echo "Using default icon"
-            convert -size 1024x1024 xc:none build/icon.png
+            if [ -f "${{ env.ICON_PATH }}" ]; then
+              cp "${{ env.ICON_PATH }}" public/icon.png
+            fi
           fi
 
           # Windows需要.ico格式
