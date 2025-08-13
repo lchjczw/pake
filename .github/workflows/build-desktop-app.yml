@@ -55,9 +55,6 @@ jobs:
             # librsvg2-dev \
             # libssl-dev \
             openssl
-          # 安装完成后移除临时源
-          # sudo sed -i '/jammy main universe/d' /etc/apt/sources.list
-          # sudo apt-get update
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
@@ -72,20 +69,21 @@ jobs:
           # 安装VC++运行时和ImageMagick
           # choco install -y vcredist140 imagemagick --version=7.1.1.15 --ignore-checksums
 
-      # 准备图标 - 兼容所有平台
+      # 准备图标 - 兼容所有平台（使用bash shell）
       - name: Prepare icons
+        shell: bash
         run: |
           # 创建build目录
           mkdir -p build
 
-          # 处理图标源文件
-          if [ -f "${{ env.ICON_PATH }}" ]; then
+          # 检查图标文件是否存在（使用bash兼容语法）
+          if [[ -f "${{ env.ICON_PATH }}" ]]; then
             echo "Using custom icon: ${{ env.ICON_PATH }}"
             cp "${{ env.ICON_PATH }}" build/icon.png
           else
             echo "Creating default transparent icon"
-            # 根据不同平台使用不同的命令创建透明图标
-            if [ "$RUNNER_OS" = "Windows" ]; then
+            # 创建透明PNG图标
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
               magick -size 1024x1024 xc:none build/icon.png
             else
               convert -size 1024x1024 xc:none build/icon.png
@@ -93,12 +91,11 @@ jobs:
           fi
 
           # 为Windows创建.ico格式
-          if [ "$RUNNER_OS" = "Windows" ]; then
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
             echo "Converting to .ico for Windows"
             if command -v magick &> /dev/null; then
               magick convert build/icon.png -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico
             else
-              # 后备方案：直接复制PNG文件作为图标
               echo "ImageMagick not available, using PNG as icon"
               cp build/icon.png build/icon.ico
             fi
@@ -109,13 +106,14 @@ jobs:
 
       # 构建应用
       - name: Build application
+        shell: bash
         run: |
           # 设置平台特定参数
-          if [ "$RUNNER_OS" = "Windows" ]; then
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
             OUTPUT_FILE="${{ env.APP_NAME }}-Windows.exe"
             ICON_FILE="build/icon.ico"
             BUILD_ARGS="--target windows"
-          elif [ "$RUNNER_OS" = "macOS" ]; then
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
             OUTPUT_FILE="${{ env.APP_NAME }}-macOS.dmg"
             ICON_FILE="build/icon.png"
             BUILD_ARGS="--target macos"
@@ -125,9 +123,9 @@ jobs:
             BUILD_ARGS=""
           fi
 
-          # 设置代理参数（如果配置了代理URL）
+          # 设置代理参数
           PROXY_ARG=""
-          if [ -n "${{ env.NET_PROXY_URL }}" ]; then
+          if [[ -n "${{ env.NET_PROXY_URL }}" ]]; then
             PROXY_ARG="--proxy-url ${{ env.NET_PROXY_URL }}"
             echo "Using proxy: ${{ env.NET_PROXY_URL }}"
           fi
@@ -148,6 +146,7 @@ jobs:
 
       # 发布到GitHub Packages
       - name: Publish to GitHub Packages
+        shell: bash
         run: |
           VERSION="1.0.${{ github.run_number }}"
           PLATFORM="${{ runner.os }}"
@@ -156,7 +155,7 @@ jobs:
           mv ./dist/* release/ || true
 
           # 确保有文件可发布
-          if [ -z "$(ls -A release)" ]; then
+          if [[ -z "$(ls -A release)" ]]; then
             echo "No files to publish in release directory"
             exit 1
           fi
