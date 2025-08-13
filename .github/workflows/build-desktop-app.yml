@@ -1,0 +1,146 @@
+name: Build Multi-Platform Desktop App
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# ======================
+# 自定义区域 - 只需修改这里的变量
+# ======================
+env:
+  # 应用基本信息
+  APP_NAME: "DeepGaze" # 桌面应用名称
+  WEB_URL: "http://107.172.62.114:8080/" # 要打包的网页URL
+
+  # 窗口设置
+  WINDOW_WIDTH: 1200 # 窗口宽度
+  WINDOW_HEIGHT: 800 # 窗口高度
+
+  # 图标设置
+  ICON_PATH: "public/icon.png" # 图标路径（1024×1024 PNG）
+
+  # 发布设置
+  PACKAGE_NAME: "DeepGaze-Desktop" # GitHub Packages包名
+# ======================
+
+jobs:
+  build-app:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      # 安装平台特定依赖
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            build-essential \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install -y wget openssl@1.1
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        run: |
+          choco install -y vcredist2015 vcredist140 imagemagick
+
+      # 准备图标
+      - name: Prepare icons
+        run: |
+          mkdir -p build
+
+          # 使用自定义图标或创建默认图标
+          if [ -f "${{ env.ICON_PATH }}" ]; then
+            cp "${{ env.ICON_PATH }}" build/icon.png
+          else
+            echo "Using default icon"
+            convert -size 1024x1024 xc:none build/icon.png
+          fi
+
+          # Windows需要.ico格式
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            magick convert build/icon.png -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico
+          fi
+
+      - name: Install pake-cli
+        run: npm install -g pake-cli
+
+      # 构建应用
+      - name: Build application
+        run: |
+          # 设置平台特定参数
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            OUTPUT_FILE="${{ env.APP_NAME }}-Windows.exe"
+            ICON_FILE="build/icon.ico"
+            BUILD_ARGS="--target windows"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            OUTPUT_FILE="${{ env.APP_NAME }}-macOS.dmg"
+            ICON_FILE="build/icon.png"
+            BUILD_ARGS="--target macos"
+          else
+            OUTPUT_FILE="${{ env.APP_NAME }}-Linux.AppImage"
+            ICON_FILE="build/icon.png"
+            BUILD_ARGS=""
+          fi
+
+          # 执行构建
+          pake "${{ env.WEB_URL }}" \
+            --name "${{ env.APP_NAME }}" \
+            --icon "$ICON_FILE" \
+            --height ${{ env.WINDOW_HEIGHT }} \
+            --width ${{ env.WINDOW_WIDTH }} \
+            $BUILD_ARGS \
+            --output ./dist
+
+          # 重命名输出文件
+          mv ./dist/${{ env.APP_NAME }}* "./dist/$OUTPUT_FILE"
+
+      # 发布到GitHub Packages
+      - name: Publish to GitHub Packages
+        run: |
+          VERSION="1.0.${{ github.run_number }}"
+          PLATFORM="${{ runner.os }}"
+
+          mkdir -p release
+          mv ./dist/* release/
+
+          npx @github/upload-to-package@v1 \
+            --token ${{ secrets.GITHUB_TOKEN }} \
+            --owner ${{ github.repository_owner }} \
+            --repo-name ${{ github.repository }} \
+            --package-name "${{ env.PACKAGE_NAME }}" \
+            --package-version "$VERSION-$PLATFORM" \
+            --files release/*
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 上传为工作流产物（可选）
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ runner.os }}
+          path: release/*
+          retention-days: 7
