@@ -61,14 +61,13 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install -y wget openssl
+          brew upgrade
+        # brew install -y wget openssl
 
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         run: |
-          choco install -y imagemagick
-
-      # vcredist2015 vcredist140
+          choco install -y imagemagick --version=7.1.1.15 vcredist2015 vcredist140
       # 准备图标
       - name: Prepare icons
         run: |
