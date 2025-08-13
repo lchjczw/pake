@@ -67,7 +67,7 @@ jobs:
       - name: Install Windows dependencies
         if: runner.os == 'Windows'
         run: |
-          choco install -y imagemagick --version=7.1.1.15 vcredist2015 vcredist140
+          # choco install -y imagemagick --version=7.1.1.15 vcredist2015 vcredist140
       # 准备图标
       - name: Prepare icons
         run: |
